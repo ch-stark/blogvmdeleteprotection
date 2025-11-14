@@ -221,7 +221,7 @@ spec:
 
 With this constraint in place, if the `cluster-admin` or any other user attempts to modify or remove the `kubevirt.io/vm-delete-protection` setting, the request will be denied unless the user also belongs to the **supervmadmin** group.
 
-"" 🔒 Summary: The Policy Shield
+## 🔒 Summary: The Policy Shield
 
 By combining ACM Policy for proactive enforcement and Gatekeeper for preventative control, VM users gain a robust safety net.
 ACM ensures that the delete protection label `(kubevirt.io/vm-delete-protection: "True")` is automatically present on all non-system VMs, preventing accidental deletion.
