@@ -22,7 +22,7 @@ By setting the `remediationAction` to enforce, the *Configuration Policy Control
 
 #### The ACM Policy Definition:
 
- ACM Policy to use `musthave` to enforce the delete-protection label
+The ACM Policy uses `musthave` to enforce the delete-protection label
 
 ```yaml
 apiVersion: policy.open-cluster-management.io/v1
