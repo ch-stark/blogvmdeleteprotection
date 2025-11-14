@@ -2,7 +2,7 @@
 
 Virtual Machines (VMs) often host critical workloads, and the `accidental deletion` of a VM can be catastrophic. If you are a VM user, ensuring that your VM does not get deleted *unintentionally* is a high priority.
 
-While OpenShift Virtualization (KubeVirt) provides a built-in mechanism to prevent inadvertent VM deletion—called virtual machine delete protection—relying on manual configuration leaves room for human error. By default, this option is *disabled*, and it must be set individually for each VM.
+While **OpenShift Virtualization** (KubeVirt) provides a built-in mechanism to prevent inadvertent VM deletion—called virtual machine delete protection—relying on manual configuration leaves room for human error. By default, this option is *disabled*, and it must be set individually for each VM.
 
 This blog post outlines a powerful two-step policy approach using RHACM Policy and Gatekeeper to not only enforce delete protection universally but also strictly govern who is authorized to remove that protection.
 
