@@ -8,7 +8,6 @@ This blog post outlines a powerful two-step policy approach using Open Cluster M
 
 The native OKD/KubeVirt feature is controlled by setting a specific label on the VirtualMachine resource: `kubevirt.io/vm-delete-protection`.
 
-Action	CLI Command 
 
 ```yaml
 Enable Delete Protection	oc patch vm <vm_name> --type merge -p '{"metadata":{"labels":{"kubevirt.io/vm-delete-protection":"True"}}}'
@@ -25,7 +24,7 @@ By setting the 'remediationAction' to enforce, the Configuration Policy Controll
 
 The ACM Policy Definition
 
-# Step 1: ACM Policy to use 'musthave' to enforce the delete-protection label
+ ACM Policy to use 'musthave' to enforce the delete-protection label
 
 ```yaml
 apiVersion: policy.open-cluster-management.io/v1
@@ -169,7 +168,7 @@ spec:
     requiredGroup: "supervmadmin" 
 ```
 
-With this constraint in place, if the vm-management-operator (or any specified restricted user) attempts to modify or remove the 'kubevirt.io/vm-delete-protection' setting, the request will be denied unless the user also belongs to the supervmadmin group.
+With this constraint in place, if the cluster-admin user attempts to modify or remove the `kubevirt.io/vm-delete-protection` setting, the request will be denied unless the user also belongs to the supervmadmin group.
 
 🔒 Summary: The Policy Shield
 
