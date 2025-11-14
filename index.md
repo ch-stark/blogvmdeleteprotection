@@ -1,10 +1,10 @@
-## 🛡️ Unbreakable VMs: Using Policies (ACM + Gatekeeper) to Enforce and Protect Delete Protection
+## 🛡️ Unbreakable VMs: Using ACM Policies and Gatekeeper) to Enforce and Protect Delete Protection
 
-Virtual Machines (VMs) often host critical workloads, and the `accidental deletion of a VM can be catastrophic. If you are a VM user, ensuring that your VM     does not get deleted unintentionally is a high priority.
+Virtual Machines (VMs) often host critical workloads, and the `accidental deletion` of a VM can be catastrophic. If you are a VM user, ensuring that your VM does not get deleted unintentionally is a high priority.
 
 While OpenShift Virtualization (KubeVirt) provides a built-in mechanism to prevent inadvertent VM deletion—called virtual machine delete protection—relying on manual configuration leaves room for human error. By default, this option is disabled, and it must be set individually for each VM.
 
-This blog post outlines a powerful two-step policy approach using Open Cluster Management (ACM) Policy and Gatekeeper to not only enforce delete protection universally but also strictly govern who is authorized to remove that protection.
+This blog post outlines a powerful two-step policy approach using RHACM Policy and Gatekeeper to not only enforce delete protection universally but also strictly govern who is authorized to remove that protection.
 
 The native OKD/KubeVirt feature is controlled by setting a specific label on the VirtualMachine resource: `kubevirt.io/vm-delete-protection`.
 
@@ -67,14 +67,66 @@ spec:
 
 (Placement and PlacementBinding are required to deploy the policy to managed clusters, but are omitted here for brevity.)
 
+
+for more fine-grained control you can also the popular policy-templating feature
+
+```yaml
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: enforce-vm-delete-protection-label
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/standards: Custom
+spec:
+  remediationAction: inform # Set to 'enforce' to automatically add the label [1, 7]
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: enforce-vm-delete-protection-label-templatized
+        spec:
+          remediationAction: inform # Overridden by parent policy [5, 6]
+          severity: low
+          namespaceSelector:
+            # Excludes system namespaces, targeting namespaces for the loop [5, 6]
+            exclude: ["kube-*", "open-cluster-management", "openshift-*", "default", "cert-manager", "redhat-ods-applications"]
+            matchLabels: {}
+          
+          # 
+          # THE LOOPING LOGIC IS BELOW IN object-templates-raw
+          # 
+          object-templates-raw: |
+            {{- $namespaces := (lookup "v1" "Namespace" "" "" "").items }}
+            {{- range $namespace := $namespaces }}
+            {{- if not (or (hasPrefix "kube-" $namespace.metadata.name) (hasPrefix "open-cluster-management" $namespace.metadata.name) (hasPrefix "openshift-" $namespace.metadata.name) (eq "default" $namespace.metadata.name) (eq "cert-manager" $namespace.metadata.name) (eq "redhat-ods-applications" $namespace.metadata.name)) }}
+            {{- $vms := (lookup "kubevirt.io/v1" "VirtualMachine" $namespace.metadata.name "" "").items }}
+            {{- range $vm := $vms }}
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: kubevirt.io/v1
+                kind: VirtualMachine
+                metadata:
+                  name: {{ $vm.metadata.name }}
+                  namespace: {{ $vm.metadata.namespace }}
+                  labels:
+                    kubevirt.io/vm-delete-protection: "True"
+            {{- end }}
+            {{- end }}
+            {{- end }}
+```
+
 #### Step 2: Restricted Management using Gatekeeper (Preventative)
 
-Once the delete protection is universally applied by the ACM policy, we must ensure that only authorized personnel can disable it. This step uses Gatekeeper (an implementation of OPA/Rego) to create an admission controller policy that blocks updates attempting to remove the protection label, unless the user belongs to a specific administrative group.
+Once the delete protection is universally applied by the ACM policy, we must ensure that only **authorized** personnel can disable it. This step uses Gatekeeper to create an admission controller policy that blocks updates attempting to remove the protection label, unless the user belongs to a specific administrative group.
 
 This policy demonstrates a powerful principle: Separation of Duties. An automatic operator may apply the protection, but only a human administrator with special privileges can override it.
 
 2.1 The Gatekeeper Constraint Template
-The ConstraintTemplate defines the schema and contains the Rego logic. Note the corrected logic now targets the label and specifically checks if the protection setting is removed or modified from `True`.
 
 ```yaml
 ## File 1: ConstraintTemplate - k8sblockoperator (Revised Rego)
@@ -147,6 +199,7 @@ spec:
 ```
 
 2.2 The Gatekeeper Constraint
+
 The Constraint applies the template, specifying which user is restricted and which group holds the required bypass privilege.
 
 ```yaml
@@ -168,7 +221,7 @@ spec:
     requiredGroup: "supervmadmin" 
 ```
 
-With this constraint in place, if the cluster-admin user attempts to modify or remove the `kubevirt.io/vm-delete-protection` setting, the request will be denied unless the user also belongs to the supervmadmin group.
+With this constraint in place, if the `cluster-admin` or any other user attempts to modify or remove the `kubevirt.io/vm-delete-protection` setting, the request will be denied unless the user also belongs to the supervmadmin group.
 
 🔒 Summary: The Policy Shield
 
