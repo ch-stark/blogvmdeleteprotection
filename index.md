@@ -6,13 +6,14 @@ While OpenShift Virtualization (KubeVirt) provides a built-in mechanism to preve
 
 This blog post outlines a powerful two-step policy approach using Open Cluster Management (ACM) Policy and Gatekeeper to not only enforce delete protection universally but also strictly govern who is authorized to remove that protection.
 
-The native OKD/KubeVirt feature is controlled by setting a specific label on the VirtualMachine resource: kubevirt.io/vm-delete-protection.
+The native OKD/KubeVirt feature is controlled by setting a specific label on the VirtualMachine resource: `kubevirt.io/vm-delete-protection`.
 
 Action	CLI Command 
-'''
+
+```yaml
 Enable Delete Protection	oc patch vm <vm_name> --type merge -p '{"metadata":{"labels":{"kubevirt.io/vm-delete-protection":"True"}}}'
 Disable Delete Protection	oc patch vm <vm_name> --type json -p '[{"op": "remove", "path": "/metadata/labels/kubevirt.io~1vm-delete-protection"}]'
-'''
+```
 
 Our goal is to automate the first action (enabling) and tightly control the second action (disabling).
 
@@ -25,7 +26,8 @@ By setting the 'remediationAction' to enforce, the Configuration Policy Controll
 The ACM Policy Definition
 
 # Step 1: ACM Policy to use 'musthave' to enforce the delete-protection label
-'''
+
+```yaml
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
@@ -62,7 +64,8 @@ spec:
                 # By omitting 'name', this applies to all VMs in selected namespaces
                 labels:
                   kubevirt.io/vm-delete-protection: "True" # Enforce the label
-'''                  
+```
+
 (Placement and PlacementBinding are required to deploy the policy to managed clusters, but are omitted here for brevity.)
 
 #### Step 2: Restricted Management using Gatekeeper (Preventative)
@@ -74,7 +77,7 @@ This policy demonstrates a powerful principle: Separation of Duties. An automati
 2.1 The Gatekeeper Constraint Template
 The ConstraintTemplate defines the schema and contains the Rego logic. Note the corrected logic now targets the label and specifically checks if the protection setting is removed or modified from "True".
 
-'''
+```yaml
 ## File 1: ConstraintTemplate - k8sblockoperator (Revised Rego)
 
 apiVersion: templates.gatekeeper.sh/v1
@@ -142,12 +145,12 @@ spec:
           vm_name := input.review.oldObject.metadata.name
           msg := sprintf("Access Denied: User %v is not authorized to remove the delete protection label from VirtualMachine %v. Only members of the '%v' group can bypass this restriction.", [current_user, vm_name, required_group])
         }
-'''
+```
 
 2.2 The Gatekeeper Constraint
 The Constraint applies the template, specifying which user is restricted and which group holds the required bypass privilege.
 
-'''
+```yaml
 # File 2: Sample Constraint - block-vm-operator
 
 apiVersion: constraints.gatekeeper.sh/v1beta1
@@ -164,7 +167,7 @@ spec:
     blockedUser: "system:serviceaccount:default:vm-management-operator" 
     # The required group that can bypass this block (e.g., your human admin group)
     requiredGroup: "supervmadmin" 
-'''
+```
 
 With this constraint in place, if the vm-management-operator (or any specified restricted user) attempts to modify or remove the 'kubevirt.io/vm-delete-protection' setting, the request will be denied unless the user also belongs to the supervmadmin group.
 
