@@ -1,4 +1,4 @@
-## 🛡️ Unbreakable VMs: Using ACM Policies and Gatekeeper) to Enforce and Protect Delete Protection
+## 🛡️ Unbreakable VMs: Using ACM Policies and Gatekeeper to Enforce and Protect Delete Protection for Virtual Machines
 
 Virtual Machines (VMs) often host critical workloads, and the `accidental deletion` of a VM can be catastrophic. If you are a VM user, ensuring that your VM does not get deleted unintentionally is a high priority.
 
