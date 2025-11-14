@@ -18,13 +18,13 @@ Our goal is to automate the first action (enabling) and tightly control the seco
 
 ### Step 1: Automated Enforcement using ACM Policy (Proactive)
 
-The first step uses an ACM Policy to automatically ensure the delete protection label is set to "True" on all targeted VMs. Instead of using complex and inefficient Go Templates to loop over every VM, we leverage the native capabilities of the ConfigurationPolicy to enforce the configuration directly on the VirtualMachine kind within specified namespaces.
+The first step uses an ACM Policy to automatically ensure the delete protection label is set to `True` on all targeted VMs. Instead of using complex and inefficient Go Templates to loop over every VM, we leverage the native capabilities of the ConfigurationPolicy to enforce the configuration directly on the VirtualMachine kind within specified namespaces.
 
-By setting the 'remediationAction' to enforce, the Configuration Policy Controller will automatically patch any VM missing or incorrectly setting the required label, instantly bringing it into compliance.
+By setting the `remediationAction` to enforce, the Configuration Policy Controller will automatically patch any VM missing or incorrectly setting the required label, instantly bringing it into compliance.
 
 The ACM Policy Definition
 
- ACM Policy to use 'musthave' to enforce the delete-protection label
+ ACM Policy to use `musthave` to enforce the delete-protection label
 
 ```yaml
 apiVersion: policy.open-cluster-management.io/v1
@@ -74,7 +74,7 @@ Once the delete protection is universally applied by the ACM policy, we must ens
 This policy demonstrates a powerful principle: Separation of Duties. An automatic operator may apply the protection, but only a human administrator with special privileges can override it.
 
 2.1 The Gatekeeper Constraint Template
-The ConstraintTemplate defines the schema and contains the Rego logic. Note the corrected logic now targets the label and specifically checks if the protection setting is removed or modified from "True".
+The ConstraintTemplate defines the schema and contains the Rego logic. Note the corrected logic now targets the label and specifically checks if the protection setting is removed or modified from `True`.
 
 ```yaml
 ## File 1: ConstraintTemplate - k8sblockoperator (Revised Rego)
