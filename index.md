@@ -12,7 +12,7 @@ The native OKD/KubeVirt feature is controlled by setting a specific label on the
 Enable Delete Protection	oc patch vm <vm_name> --type merge -p '{"metadata":{"labels":{"kubevirt.io/vm-delete-protection":"True"}}}'
 Disable Delete Protection	oc patch vm <vm_name> --type json -p '[{"op": "remove", "path": "/metadata/labels/kubevirt.io~1vm-delete-protection"}]'
 ```
-Our goal is to automate the first action (enabling) and tightly control the second action (disabling).
+Our goal is to automate the first action (**enabling**) and tightly control the second action (**disabling**).
 
 ### Step 1: Automated Enforcement using ACM Policy (Proactive)
 
