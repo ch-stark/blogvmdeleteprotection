@@ -124,7 +124,7 @@ spec:
 
 Once the delete protection is universally applied by the ACM policy, we must ensure that only **authorized** personnel can disable it. This step uses Gatekeeper to create an admission controller policy that blocks updates attempting to remove the protection label, unless the user belongs to a specific administrative group.
 
-This policy demonstrates a powerful principle: Separation of Duties. An automatic operator may apply the protection, but only a human administrator with special privileges can override it.
+This policy demonstrates a **powerful** principle: Separation of Duties. An automatic operator may apply the protection, but only a human administrator with special privileges can override it.
 
 2.1 The Gatekeeper Constraint Template
 
