@@ -1,30 +1,31 @@
-🛡️ Unbreakable VMs: Using Policies (ACM + Gatekeeper) to Enforce and Protect Delete Protection
-Virtual Machines (VMs) often host critical workloads, and the accidental deletion of a VM can be catastrophic. If you are a VM user, ensuring that your VM does not get deleted unintentionally is a high priority.
+## 🛡️ Unbreakable VMs: Using Policies (ACM + Gatekeeper) to Enforce and Protect Delete Protection
 
-While OKD Virtualization (KubeVirt) provides a built-in mechanism to prevent inadvertent VM deletion—called virtual machine delete protection—relying on manual configuration leaves room for human error. By default, this option is disabled, and it must be set individually for each VM.
+### Virtual Machines (VMs) often host critical workloads, and the accidental deletion of a VM can be catastrophic. If you are a VM user, ensuring that your VM      does not get deleted unintentionally is a high priority.
+
+While OpenShift Virtualization (KubeVirt) provides a built-in mechanism to prevent inadvertent VM deletion—called virtual machine delete protection—relying on manual configuration leaves room for human error. By default, this option is disabled, and it must be set individually for each VM.
 
 This blog post outlines a powerful two-step policy approach using Open Cluster Management (ACM) Policy and Gatekeeper to not only enforce delete protection universally but also strictly govern who is authorized to remove that protection.
 
 The native OKD/KubeVirt feature is controlled by setting a specific label on the VirtualMachine resource: kubevirt.io/vm-delete-protection.
 
-Action	CLI Command Snippet
+Action	CLI Command 
+'''
 Enable Delete Protection	oc patch vm <vm_name> --type merge -p '{"metadata":{"labels":{"kubevirt.io/vm-delete-protection":"True"}}}'
 Disable Delete Protection	oc patch vm <vm_name> --type json -p '[{"op": "remove", "path": "/metadata/labels/kubevirt.io~1vm-delete-protection"}]'
-
-Export to Sheets
+'''
 
 Our goal is to automate the first action (enabling) and tightly control the second action (disabling).
 
-Step 1: Automated Enforcement using ACM Policy (Proactive)
+### Step 1: Automated Enforcement using ACM Policy (Proactive)
+
 The first step uses an ACM Policy to automatically ensure the delete protection label is set to "True" on all targeted VMs. Instead of using complex and inefficient Go Templates to loop over every VM, we leverage the native capabilities of the ConfigurationPolicy to enforce the configuration directly on the VirtualMachine kind within specified namespaces.
 
-By setting the remediationAction to enforce, the Configuration Policy Controller will automatically patch any VM missing or incorrectly setting the required label, instantly bringing it into compliance.
+By setting the 'remediationAction' to enforce, the Configuration Policy Controller will automatically patch any VM missing or incorrectly setting the required label, instantly bringing it into compliance.
 
 The ACM Policy Definition
-YAML
 
 # Step 1: ACM Policy to use 'musthave' to enforce the delete-protection label
-
+'''
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
@@ -61,9 +62,11 @@ spec:
                 # By omitting 'name', this applies to all VMs in selected namespaces
                 labels:
                   kubevirt.io/vm-delete-protection: "True" # Enforce the label
-(PlacementRule and PlacementBinding are required to deploy the policy to managed clusters, but are omitted here for brevity.)
+'''                  
+(Placement and PlacementBinding are required to deploy the policy to managed clusters, but are omitted here for brevity.)
 
-Step 2: Restricted Management using Gatekeeper (Preventative)
+#### Step 2: Restricted Management using Gatekeeper (Preventative)
+
 Once the delete protection is universally applied by the ACM policy, we must ensure that only authorized personnel can disable it. This step uses Gatekeeper (an implementation of OPA/Rego) to create an admission controller policy that blocks updates attempting to remove the protection label, unless the user belongs to a specific administrative group.
 
 This policy demonstrates a powerful principle: Separation of Duties. An automatic operator may apply the protection, but only a human administrator with special privileges can override it.
@@ -71,9 +74,8 @@ This policy demonstrates a powerful principle: Separation of Duties. An automati
 2.1 The Gatekeeper Constraint Template
 The ConstraintTemplate defines the schema and contains the Rego logic. Note the corrected logic now targets the label and specifically checks if the protection setting is removed or modified from "True".
 
-YAML
-
-# File 1: ConstraintTemplate - k8sblockoperator (Revised Rego)
+'''
+## File 1: ConstraintTemplate - k8sblockoperator (Revised Rego)
 
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
@@ -140,11 +142,12 @@ spec:
           vm_name := input.review.oldObject.metadata.name
           msg := sprintf("Access Denied: User %v is not authorized to remove the delete protection label from VirtualMachine %v. Only members of the '%v' group can bypass this restriction.", [current_user, vm_name, required_group])
         }
+'''
+
 2.2 The Gatekeeper Constraint
 The Constraint applies the template, specifying which user is restricted and which group holds the required bypass privilege.
 
-YAML
-
+'''
 # File 2: Sample Constraint - block-vm-operator
 
 apiVersion: constraints.gatekeeper.sh/v1beta1
@@ -161,13 +164,14 @@ spec:
     blockedUser: "system:serviceaccount:default:vm-management-operator" 
     # The required group that can bypass this block (e.g., your human admin group)
     requiredGroup: "supervmadmin" 
-With this constraint in place, if the vm-management-operator (or any specified restricted user) attempts to modify or remove the kubevirt.io/vm-delete-protection setting, the request will be denied unless the user also belongs to the supervmadmin group.
+'''
+
+With this constraint in place, if the vm-management-operator (or any specified restricted user) attempts to modify or remove the 'kubevirt.io/vm-delete-protection' setting, the request will be denied unless the user also belongs to the supervmadmin group.
 
 🔒 Summary: The Policy Shield
+
 By combining ACM Policy for proactive enforcement and Gatekeeper for preventative control, VM users gain a robust safety net.
-
 ACM ensures that the delete protection label (kubevirt.io/vm-delete-protection: "True") is automatically present on all non-system VMs, preventing accidental deletion.
-
 Gatekeeper acts as the final lock, ensuring that only designated VM-Super-Admins are authorized to remove this crucial safety feature.
 
 This system works like a security vault: ACM ensures every valuable item is always locked inside the vault, and Gatekeeper ensures that only the select few with the master key can unlock it.
