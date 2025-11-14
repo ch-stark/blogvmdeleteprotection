@@ -1,26 +1,24 @@
 ## 🛡️ Unbreakable VMs: Using ACM Policies and Gatekeeper to Enforce and Protect Delete Protection for Virtual Machines
 
-Virtual Machines (VMs) often host critical workloads, and the `accidental deletion` of a VM can be catastrophic. If you are a VM user, ensuring that your VM does not get deleted unintentionally is a high priority.
+Virtual Machines (VMs) often host critical workloads, and the `accidental deletion` of a VM can be catastrophic. If you are a VM user, ensuring that your VM does not get deleted *unintentionally* is a high priority.
 
-While OpenShift Virtualization (KubeVirt) provides a built-in mechanism to prevent inadvertent VM deletion—called virtual machine delete protection—relying on manual configuration leaves room for human error. By default, this option is disabled, and it must be set individually for each VM.
+While OpenShift Virtualization (KubeVirt) provides a built-in mechanism to prevent inadvertent VM deletion—called virtual machine delete protection—relying on manual configuration leaves room for human error. By default, this option is *disabled*, and it must be set individually for each VM.
 
 This blog post outlines a powerful two-step policy approach using RHACM Policy and Gatekeeper to not only enforce delete protection universally but also strictly govern who is authorized to remove that protection.
 
 The native OKD/KubeVirt feature is controlled by setting a specific label on the VirtualMachine resource: `kubevirt.io/vm-delete-protection`.
 
-
 ```yaml
 Enable Delete Protection	oc patch vm <vm_name> --type merge -p '{"metadata":{"labels":{"kubevirt.io/vm-delete-protection":"True"}}}'
 Disable Delete Protection	oc patch vm <vm_name> --type json -p '[{"op": "remove", "path": "/metadata/labels/kubevirt.io~1vm-delete-protection"}]'
 ```
-
 Our goal is to automate the first action (enabling) and tightly control the second action (disabling).
 
 ### Step 1: Automated Enforcement using ACM Policy (Proactive)
 
-The first step uses an ACM Policy to automatically ensure the delete protection label is set to `True` on all targeted VMs. Instead of using complex and inefficient Go Templates to loop over every VM, we leverage the native capabilities of the ConfigurationPolicy to enforce the configuration directly on the VirtualMachine kind within specified namespaces.
+The first step uses an ACM Policy to automatically ensure the delete protection label is set to `True` on all targeted VMs. In the first example we leverage the native capabilities of the ConfigurationPolicy to enforce the configuration directly on the VirtualMachine kind within specified namespaces.
 
-By setting the `remediationAction` to enforce, the Configuration Policy Controller will automatically patch any VM missing or incorrectly setting the required label, instantly bringing it into compliance.
+By setting the `remediationAction` to enforce, the *Configuration Policy Controller* will automatically patch any VM missing or incorrectly setting the required label, instantly bringing it into compliance.
 
 #### The ACM Policy Definition:
 
@@ -66,7 +64,7 @@ spec:
 ```
 (Placement and PlacementBinding are required to deploy the policy to managed clusters, but are omitted here for brevity.)
 
-For more fine-grained control you can also the popular `policy-templating` feature:
+For more *fine-grained control* you can also the popular `policy-templating` feature:
 
 ```yaml
 apiVersion: policy.open-cluster-management.io/v1
@@ -122,7 +120,7 @@ spec:
 
 Once the delete protection is universally applied by the ACM policy, we must ensure that only **authorized** personnel can disable it. This step uses Gatekeeper to create an admission controller policy that blocks updates attempting to remove the protection label, unless the user belongs to a specific administrative group.
 
-This policy demonstrates a **powerful** principle: Separation of Duties. An automatic operator may apply the protection, but only a human administrator with special privileges can override it.
+This policy demonstrates a **powerful** principle: *Separation of Duties*. An automatic operator may apply the protection, but only a human administrator with special privileges can override it.
 
 ### 2.1 The Gatekeeper Constraint Template
 
@@ -181,13 +179,7 @@ spec:
           # 1. Operation must be an UPDATE
           input.request.operation == "UPDATE"
           
-          # 2. Check if the user is the one we want to block
-          current_user == blocked_user
-          
-          # 3. User is NOT an admin
-          not user_is_admin
-          
-          # 4. The requested update attempts to remove or disable the protection setting
+          # 2. The requested update attempts to remove or disable the protection setting
           protection_removed
           
           # Generates denial message
@@ -213,8 +205,6 @@ spec:
       - apiGroups: ["kubevirt.io"]
         kinds: ["VirtualMachine"]
   parameters:
-    # Target a specific restricted ServiceAccount/User (e.g., an automated operator)
-    blockedUser: "system:serviceaccount:default:vm-management-operator" 
     # The required group that can bypass this block (e.g., your human admin group)
     requiredGroup: "supervmadmin" 
 ```
