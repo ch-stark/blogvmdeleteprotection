@@ -20,6 +20,8 @@ The first step uses an ACM Policy to automatically ensure the delete protection 
 
 By setting the `remediationAction` to enforce, the *Configuration Policy Controller* will automatically patch any VM missing or incorrectly setting the required label, instantly bringing it into compliance.
 
+> **_NOTE:_**  You can certainly flexible specify on which kind of VM's you want to apply this setting
+
 #### The ACM Policy Definition:
 
 The ACM Policy uses `musthave` to enforce the delete-protection label
