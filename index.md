@@ -67,7 +67,7 @@ spec:
               apiVersion: kubevirt.io/v1
               kind: VirtualMachine
               metadata:
-                # By omitting 'name', this applies to all VMs in selected namespaces
+                # By omitting 'name', this applies to all VMs in selected namespaces 
                 labels:
                   kubevirt.io/vm-delete-protection: "True" # Enforce the label
 ```
