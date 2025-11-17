@@ -56,6 +56,10 @@ spec:
         namespaceSelector:
           exclude: ["kube-*", "open-cluster-management", "openshift-*", "default", "cert-manager", "redhat-ods-applications"]
           matchLabels: {}
+        # This example targets only VMs that have the label 'environment: production'.
+        objectSelector:
+          matchLabels:
+            environment: "production"
         # Simple object-templates to enforce the configuration on the target kind
         object-templates: 
           - complianceType: musthave
