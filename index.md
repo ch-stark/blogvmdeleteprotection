@@ -8,6 +8,9 @@ This blog post outlines a powerful two-step policy approach using RHACM Policy a
 
 The native OKD/KubeVirt feature is controlled by setting a specific label on the VirtualMachine resource: `kubevirt.io/vm-delete-protection`.
 
+> **_NOTE:_**: this is available with OpenShift 4.19 onwards.
+
+
 ```yaml
 Enable Delete Protection	oc patch vm <vm_name> --type merge -p '{"metadata":{"labels":{"kubevirt.io/vm-delete-protection":"True"}}}'
 Disable Delete Protection	oc patch vm <vm_name> --type json -p '[{"op": "remove", "path": "/metadata/labels/kubevirt.io~1vm-delete-protection"}]'
