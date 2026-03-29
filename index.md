@@ -1,33 +1,37 @@
-## 🛡️ Unbreakable VMs: Using ACM Policies and Gatekeeper to Enforce and Protect Delete Protection for Virtual Machines
+# 🛡️ Unbreakable VMs: Using ACM Policies and Gatekeeper to Enforce and Protect Delete Protection
 
-Virtual Machines (VMs) often host critical workloads, and the `accidental deletion` of a VM can be catastrophic. If you are a VM user, ensuring that your VM does not get deleted *unintentionally* is a high priority.
+Virtual Machines (VMs) often host critical workloads, and the **accidental deletion** of a VM can be catastrophic. If you are a VM user, ensuring that your VM does not get deleted *unintentionally* is a high priority.
 
-While **OpenShift Virtualization** (KubeVirt) provides a built-in mechanism to prevent inadvertent VM deletion—called virtual machine delete protection—relying on manual configuration leaves room for human error. By default, this option is *disabled*, and it must be set individually for each VM.
+While **OpenShift Virtualization** (KubeVirt) provides a built-in mechanism to prevent inadvertent VM deletion—called **Virtual Machine Delete Protection**—relying on manual configuration leaves room for human error. By default, this option is disabled and must be set individually for each VM.
 
-This blog post outlines a powerful two-step policy approach using RHACM Policy and Gatekeeper to not only enforce delete protection universally but also strictly govern who is authorized to remove that protection.
+This blog post outlines a powerful two-step policy approach using **Red Hat Advanced Cluster Management (RHACM)** and **Gatekeeper** to not only enforce delete protection universally but also strictly govern who is authorized to remove that protection.
+
+## The Native Mechanism
 
 The native OKD/KubeVirt feature is controlled by setting a specific label on the VirtualMachine resource: `kubevirt.io/vm-delete-protection`.
 
-> **_NOTE:_**: this is available with OpenShift 4.19 onwards.
+> **NOTE:** This is available with OpenShift 4.19 onwards.
 
+| Action | Command |
+| :--- | :--- |
+| **Enable Delete Protection** | `oc patch vm <vm_name> --type merge -p '{"metadata":{"labels":{"kubevirt.io/vm-delete-protection":"True"}}}'` |
+| **Disable Delete Protection** | `oc patch vm <vm_name> --type json -p '[{"op": "remove", "path": "/metadata/labels/kubevirt.io~1vm-delete-protection"}]'` |
 
-```yaml
-Enable Delete Protection	oc patch vm <vm_name> --type merge -p '{"metadata":{"labels":{"kubevirt.io/vm-delete-protection":"True"}}}'
-Disable Delete Protection	oc patch vm <vm_name> --type json -p '[{"op": "remove", "path": "/metadata/labels/kubevirt.io~1vm-delete-protection"}]'
-```
-Our goal is to automate the first action (**enabling**) and tightly control the second action (**disabling**).
+Our goal is to **automate the first action (enabling)** and **tightly control the second action (disabling)**.
+
+---
 
 ### Step 1: Automated Enforcement using ACM Policy (Proactive)
 
-The first step uses an ACM Policy to automatically ensure the delete protection label is set to `True` on all targeted VMs. In the first example we leverage the native capabilities of the ConfigurationPolicy to enforce the configuration directly on the VirtualMachine kind within specified namespaces.
+The first step uses an ACM Policy to automatically ensure the delete protection label is set to `True` on all targeted VMs. In the first example, we leverage the native capabilities of the `ConfigurationPolicy` to enforce the configuration directly on the VirtualMachine kind within specified namespaces.
 
-By setting the `remediationAction` to enforce, the *Configuration Policy Controller* will automatically patch any VM missing or incorrectly setting the required label, instantly bringing it into compliance.
+By setting the `remediationAction` to **enforce**, the *Configuration Policy Controller* will automatically patch any VM missing or incorrectly setting the required label, instantly bringing it into compliance.
 
-> **_NOTE:_**  You can certainly flexible specify on which kind of VM's you want to apply this setting
+> **NOTE:** You can flexibly specify on which kind of VMs you want to apply this setting.
 
-#### The ACM Policy Definition:
+#### 1.1 The ACM Policy Definition (Standard)
 
-The ACM Policy uses `musthave` to enforce the delete-protection label
+The ACM Policy uses `musthave` to enforce the delete-protection label.
 
 ```yaml
 apiVersion: policy.open-cluster-management.io/v1
@@ -40,7 +44,6 @@ metadata:
     policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
     policy.open-cluster-management.io/standards: Custom
 spec:
-  # Crucial: 'enforce' for automatic patching
   remediationAction: enforce 
   disabled: false
   policy-templates:
@@ -52,7 +55,6 @@ spec:
       spec:
         remediationAction: enforce
         severity: low
-        # Excludes common system namespaces from enforcement
         namespaceSelector:
           exclude: ["kube-*", "open-cluster-management", "openshift-*", "default", "cert-manager", "redhat-ods-applications"]
           matchLabels: {}
@@ -60,7 +62,6 @@ spec:
         objectSelector:
           matchLabels:
             environment: "production"
-        # Simple object-templates to enforce the configuration on the target kind
         object-templates: 
           - complianceType: musthave
             objectDefinition:
@@ -69,8 +70,7 @@ spec:
               metadata:
                 # By omitting 'name', this applies to all VMs in selected namespaces 
                 labels:
-                  kubevirt.io/vm-delete-protection: "True" # Enforce the label
-```
+                  kubevirt.io/vm-delete-protection: "True"
 (Placement and PlacementBinding are required to deploy the policy to managed clusters, but are omitted here for brevity.)
 
 For more *fine-grained control* you can also the popular `policy-templating` feature:
