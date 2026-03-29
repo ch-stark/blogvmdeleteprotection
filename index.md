@@ -71,6 +71,8 @@ spec:
                 # By omitting 'name', this applies to all VMs in selected namespaces 
                 labels:
                   kubevirt.io/vm-delete-protection: "True"
+```
+
 (Placement and PlacementBinding are required to deploy the policy to managed clusters, but are omitted here for brevity.)
 
 For more *fine-grained control* you can also the popular `policy-templating` feature:
