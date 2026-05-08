@@ -1,5 +1,7 @@
 # 🛡️ Unbreakable VMs: Using ACM Policies and Gatekeeper to Enforce and Protect Delete Protection
 
+> **NOTE:** **Virtual Machine Delete Protection** this is not useful for Scenarios where VM's are managed via Git.
+
 Virtual Machines (VMs) often host critical workloads, and the **accidental deletion** of a VM can be catastrophic. If you are a VM user, ensuring that your VM does not get deleted *unintentionally* is a high priority.
 
 While **OpenShift Virtualization** (KubeVirt) provides a built-in mechanism to prevent inadvertent VM deletion—called **Virtual Machine Delete Protection**—relying on manual configuration leaves room for human error. By default, this option is disabled and must be set individually for each VM.
